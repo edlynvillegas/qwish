@@ -2,6 +2,8 @@
 
 A serverless event notification system that sends "Happy Birthday" and "Happy Anniversary" messages to users at exactly 9am (or their preferred time) in their local timezone.
 
+> **Quick Jump:** [Local Development Setup](#local-development)
+
 ## Features
 
 ✅ **Multi-Event Support** - Handles Birthdays, Anniversaries, and is extensible for other event types  
@@ -265,6 +267,67 @@ The system includes an automated health check that runs **every hour** to monito
 - Node.js 20+
 - Docker (for LocalStack)
 - AWS CLI
+
+### Webhook Setup (Required)
+
+To test message delivery locally, you need a mock webhook URL (Hookbin) that returns a `200 OK` status.
+
+**Recommended: Pipedream Workflow**
+
+1. Create a new [Pipedream](https://pipedream.com) workflow.
+2. Add an **HTTP / Webhook** trigger (select "Return a custom response from your workflow").
+3. Add a **Node.js** step and use the following code:
+
+```javascript
+export default defineComponent({
+  name: "Process Webhook Message",
+  description: "Process a message from a webhook trigger",
+  type: "action",
+  props: {
+    message: {
+      type: "string",
+      label: "Message",
+      description: "Message from webhook body",
+      optional: false
+    }
+  },
+  async run({ $ }) {
+    // 1. Log for debugging in Pipedream console
+    console.log("📩 Received QWish Notification:", body.message);
+    console.log("🔑 Idempotency Key:", headers['idempotency-key']);
+
+    // 2. Handle missing data
+    if (!this.message) {
+      return await $.respond({
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+        body: { 
+          error: "Validation Failed",
+          message: "The 'message' field is required and cannot be empty." 
+        }
+      })
+    }
+
+    const responseBody = {
+      success: true,
+      message: this.message 
+    }
+    // 3. Send 200 OK back to QWish (CRITICAL)
+    // If this is missing or returns non-200, QWish will retry/fail.
+    await $.respond({
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: responseBody
+    })
+
+    // Return data for use in later Pipedream steps (optional)
+    return responseBody
+  },
+})
+```
+
+4. Deploy and copy the endpoint URL.
+5. Use this URL for the `HOOKBIN_URL` environment variable.
 
 ### Setup
 
