@@ -1,4 +1,4 @@
-# QWish ⚡
+# QWish - Queue as you wish! ⚡
 
 A serverless event notification system that sends "Happy Birthday" and "Happy Anniversary" messages to users at exactly 9am (or their preferred time) in their local timezone.
 
