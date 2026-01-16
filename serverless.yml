@@ -1,0 +1,198 @@
+service: qwish
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: local
+  region: ap-southeast-1
+  apiGateway:
+    throttle:
+      rateLimit: 50   # steady-state requests per second
+      burstLimit: 100 # short-term burst capacity
+  environment:
+    HOOKBIN_URL: ${env:HOOKBIN_URL}
+    USERS_TABLE: Users
+    GREETER_QUEUE_NAME: GreeterQueue.fifo
+    GREETER_QUEUE_URL:
+      Ref: GreeterQueue
+    DLQ_QUEUE_NAME: GreeterDLQ.fifo
+    DLQ_URL:
+      Ref: GreeterDLQ
+
+plugins:
+  - serverless-offline
+  - serverless-localstack
+
+custom:
+  localstack:
+    stages:
+      - local
+    host: http://localhost
+    edgePort: 4566
+
+functions:
+  listUser:
+    handler: src/handlers/listUser.listUser
+    events:
+      - http:
+          path: user
+          method: get
+  createUser:
+    handler: src/handlers/createUser.createUser
+    events:
+      - http:
+          path: user
+          method: post
+  deleteUser:
+    handler: src/handlers/deleteUser.deleteUser
+    events:
+      - http:
+          path: user/{id}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+  updateUser:
+    handler: src/handlers/updateUser.updateUser
+    events:
+      - http:
+          path: user/{id}
+          method: put
+          request:
+            parameters:
+              paths:
+                id: true
+  addUserEvent:
+    handler: src/handlers/addUserEvent.addUserEvent
+    events:
+      - http:
+          path: user/{id}/event
+          method: post
+          request:
+            parameters:
+              paths:
+                id: true
+  listEvents:
+    handler: src/handlers/listEvents.listEvents
+    events:
+      - http:
+          path: events
+          method: get
+  scheduler:
+    handler: src/handlers/scheduler.scheduler
+    events:
+      - schedule: rate(1 minute)
+    dependsOn:
+      - UsersTable
+
+  sender:
+    handler: src/handlers/sender.sender
+    timeout: 300  # 5 minutes
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - GreeterQueue
+              - Arn
+          batchSize: 10 # Process 10 messages at a time
+          maximumRetryAttempts: 2
+
+  dlqProcessor:
+    handler: src/handlers/dlqProcessor.dlqProcessor
+    timeout: 60 # 1 minute
+    events:
+      - schedule: 
+          rate: rate(5 minutes)  # Check DLQ every 5 minutes
+          description: 'Automatically redrive messages from DLQ when service is healthy'
+
+  healthCheck:
+    handler: src/handlers/healthCheck.healthCheck
+    timeout: 30 # 30 seconds
+    events:
+      - schedule:
+          rate: rate(1 hour)  # Check for missed events every hour
+          description: 'Monitor for messages that should have been sent but were not'
+    dependsOn:
+      - UsersTable
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Users
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: type
+            AttributeType: S
+          - AttributeName: notifyUtc
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: TypeIndex
+            KeySchema:
+              - AttributeName: type
+                KeyType: HASH
+              - AttributeName: notifyUtc
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: AllEventsIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: notifyUtc
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    
+    GreeterDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: GreeterDLQ.fifo
+        FifoQueue: true
+        ContentBasedDeduplication: true
+        MessageRetentionPeriod: 1209600  # 14 days (max retention)
+
+    GreeterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: GreeterQueue.fifo
+        FifoQueue: true
+        ContentBasedDeduplication: true
+        VisibilityTimeout: 60  # 60 seconds for Lambda to process
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt:
+              - GreeterDLQ
+              - Arn
+          maxReceiveCount: 3  # Retry 3 times before sending to DLQ
+    
+    # DLQAlarm:
+    #   Type: AWS::CloudWatch::Alarm
+    #   Properties:
+    #     AlarmName: qwish-dlq-alarm
+    #     AlarmDescription: Alert when birthday messages fail and land in DLQ
+    #     MetricName: ApproximateNumberOfMessagesVisible
+    #     Namespace: AWS/SQS
+    #     Dimensions:
+    #       - Name: QueueName
+    #         Value: GreeterDLQ.fifo
+    #     Statistic: Sum
+    #     Period: 300  # 5 minutes
+    #     EvaluationPeriods: 1
+    #     Threshold: 0
+    #     ComparisonOperator: GreaterThanThreshold
+    #     TreatMissingData: notBreaching
