@@ -293,8 +293,10 @@ export default defineComponent({
   },
   async run({ $ }) {
     // 1. Log for debugging in Pipedream console
-    console.log("📩 Received QWish Notification:", body.message);
-    console.log("🔑 Idempotency Key:", headers['idempotency-key']);
+    console.log("📩 Received QWish Notification:", this.message);
+    if (this.headers && this.headers['idempotency-key']) {
+      console.log("🔑 Idempotency Key:", this.headers['idempotency-key']);
+    }
 
     // 2. Handle missing data
     if (!this.message) {
