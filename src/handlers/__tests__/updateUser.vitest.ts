@@ -12,6 +12,7 @@ const EVENT_DATE = '1990-06-15';
 const NOTIFY_LOCAL_TIME = '09:00';
 const NOTIFY_UTC_YEAR = new Date().getFullYear();
 const DEFAULT_NOTIFY_UTC = `${NOTIFY_UTC_YEAR}-06-15T13:00:00.000Z`;
+const UPDATED_AT = '2026-01-01T00:00:00.000Z';
 const mockComputeNotifyUtc = vi.fn();
 
 vi.mock('../../utils/notify', () => ({
@@ -82,6 +83,7 @@ describe('updateUser', () => {
         notifyUtc: DEFAULT_NOTIFY_UTC,
         lastSentYear: 0,
         label: 'Party',
+        updatedAt: UPDATED_AT,
       },
     });
 
@@ -107,18 +109,22 @@ describe('updateUser', () => {
       notifyLocalTime: NOTIFY_LOCAL_TIME,
       notifyUtc: '2026-06-15T13:00:00.000Z',
       label: 'Party',
+      updatedAt: UPDATED_AT,
     });
 
     expect(mockComputeNotifyUtc).toHaveBeenCalledWith(
       EVENT_DATE,
       'America/New_York',
-      NOTIFY_LOCAL_TIME
+      NOTIFY_LOCAL_TIME,
+      expect.any(String)
     );
 
     const calls = ddbMock.commandCalls(UpdateCommand);
     const input = calls[0]?.args[0]?.input;
     expect(input?.UpdateExpression).toContain('notifyUtc = :notifyUtc');
+    expect(input?.UpdateExpression).toContain('updatedAt = :updatedAt');
     expect(input?.ExpressionAttributeValues?.[':notifyUtc']).toBe('2026-06-15T13:00:00.000Z');
+    expect(typeof input?.ExpressionAttributeValues?.[':updatedAt']).toBe('string');
   });
 
   it('returns 400 when no fields to update', async () => {
@@ -132,7 +138,7 @@ describe('updateUser', () => {
 
   it('updates user metadata', async () => {
     ddbMock.on(GetCommand).resolves({ Item: { data: { id: USER_ID, firstName: 'Old', lastName: 'Name', timezone: 'UTC' } } });
-    ddbMock.on(UpdateCommand).resolves({ Attributes: { data: { id: USER_ID, firstName: 'New', lastName: 'Name', timezone: 'UTC' } } });
+    ddbMock.on(UpdateCommand).resolves({ Attributes: { data: { id: USER_ID, firstName: 'New', lastName: 'Name', timezone: 'UTC', updatedAt: UPDATED_AT } } });
 
     const result = await updateUser(
       makeUpdateEvent(USER_ID, { firstName: 'New' })
@@ -140,11 +146,13 @@ describe('updateUser', () => {
 
     expect(result.statusCode).toBe(200);
     const body = JSON.parse(result.body);
-    expect(body.data).toEqual({ id: USER_ID, firstName: 'New', lastName: 'Name', timezone: 'UTC' });
+    expect(body.data).toMatchObject({ id: USER_ID, firstName: 'New', lastName: 'Name', timezone: 'UTC', updatedAt: UPDATED_AT });
 
     const calls = ddbMock.commandCalls(UpdateCommand);
     const input = calls[0]?.args[0]?.input;
     expect(input?.UpdateExpression).toContain('#data.#firstName = :firstName');
+    expect(input?.UpdateExpression).toContain('#data.#updatedAt = :updatedAt');
+    expect(typeof input?.ExpressionAttributeValues?.[':updatedAt']).toBe('string');
   });
 
   it('returns 404 when user metadata missing', async () => {

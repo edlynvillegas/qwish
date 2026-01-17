@@ -107,7 +107,7 @@ describe('addUserEvent', () => {
     expect(result.statusCode).toBe(201);
     const body = JSON.parse(result.body);
     expect(body.message).toBe('Event added successfully');
-    expect(body.data).toEqual({
+    expect(body.data).toMatchObject({
       type: 'birthday',
       date: EVENT_DATE,
       notifyLocalTime: NOTIFY_LOCAL_TIME,
@@ -115,11 +115,14 @@ describe('addUserEvent', () => {
       lastSentYear: 0,
       label: 'Party',
     });
+    expect(body.data.createdAt).toBeDefined();
+    expect(body.data.updatedAt).toBeDefined();
 
     expect(mockComputeNotifyUtc).toHaveBeenCalledWith(
       EVENT_DATE,
       'America/New_York',
-      NOTIFY_LOCAL_TIME
+      NOTIFY_LOCAL_TIME,
+      expect.any(String)
     );
 
     const calls = ddbMock.commandCalls(PutCommand);

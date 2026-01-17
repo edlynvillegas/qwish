@@ -99,7 +99,12 @@ describe('createUser', () => {
       expect(ddbMock.commandCalls(BatchWriteCommand)).toHaveLength(1);
 
       // Verify computeNotifyUtc was called with correct parameters
-      expect(mockComputeNotifyUtc).toHaveBeenCalledWith('1990-06-15', 'America/New_York', '09:00');
+      expect(mockComputeNotifyUtc).toHaveBeenCalledWith(
+        '1990-06-15',
+        'America/New_York',
+        '09:00',
+        expect.any(String)
+      );
     });
 
     it('should create user with multiple events', async () => {
@@ -131,8 +136,8 @@ describe('createUser', () => {
 
       // Verify computeNotifyUtc called for each event
       expect(mockComputeNotifyUtc).toHaveBeenCalledTimes(2);
-      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(1, '1990-06-15', 'UTC', '09:00');
-      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(2, '2020-06-10', 'UTC', '10:00');
+      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(1, '1990-06-15', 'UTC', '09:00', expect.any(String));
+      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(2, '2020-06-10', 'UTC', '10:00', expect.any(String));
     });
 
     it('should use default notifyLocalTime when not provided', async () => {
@@ -155,7 +160,12 @@ describe('createUser', () => {
       expect(result.statusCode).toBe(201);
 
       // Verify default notifyLocalTime was used (09:00)
-      expect(mockComputeNotifyUtc).toHaveBeenCalledWith('1990-06-15', 'America/New_York', '09:00');
+      expect(mockComputeNotifyUtc).toHaveBeenCalledWith(
+        '1990-06-15',
+        'America/New_York',
+        '09:00',
+        expect.any(String)
+      );
     });
 
     it('should normalize date format', async () => {
@@ -178,7 +188,12 @@ describe('createUser', () => {
       expect(result.statusCode).toBe(201);
 
       // Verify date was normalized to YYYY-MM-DD format
-      expect(mockComputeNotifyUtc).toHaveBeenCalledWith('1990-06-15', 'UTC', '09:00');
+      expect(mockComputeNotifyUtc).toHaveBeenCalledWith(
+        '1990-06-15',
+        'UTC',
+        '09:00',
+        expect.any(String)
+      );
     });
 
     it('should include event label when provided', async () => {
@@ -399,8 +414,20 @@ describe('createUser', () => {
       expect(result.statusCode).toBe(201);
 
       expect(mockComputeNotifyUtc).toHaveBeenCalledTimes(2);
-      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(1, '1990-06-15', 'America/New_York', '09:00');
-      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(2, '2020-12-25', 'America/New_York', '12:00');
+      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(
+        1,
+        '1990-06-15',
+        'America/New_York',
+        '09:00',
+        expect.any(String)
+      );
+      expect(mockComputeNotifyUtc).toHaveBeenNthCalledWith(
+        2,
+        '2020-12-25',
+        'America/New_York',
+        '12:00',
+        expect.any(String)
+      );
     });
   });
 
@@ -465,7 +492,7 @@ describe('createUser', () => {
       const result = await createUser(event) as APIGatewayProxyResult;
       const responseBody = JSON.parse(result.body);
 
-      expect(responseBody).toEqual({
+      expect(responseBody).toMatchObject({
         id: 'test-uuid-123',
         firstName: 'John',
         lastName: 'Doe',
@@ -480,6 +507,10 @@ describe('createUser', () => {
           },
         ],
       });
+      expect(responseBody.createdAt).toBeDefined();
+      expect(responseBody.updatedAt).toBeDefined();
+      expect(responseBody.events[0].createdAt).toBeDefined();
+      expect(responseBody.events[0].updatedAt).toBeDefined();
     });
   });
 });

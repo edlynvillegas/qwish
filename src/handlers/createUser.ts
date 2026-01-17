@@ -18,24 +18,29 @@ export const createUser = async (event: APIGatewayProxyEvent) => {
 	}
 	
 	const id = uuidv4();
+	const now = new Date().toISOString();
 
 	const baseUser: User = {
 		id,
 		firstName: payload.data.firstName,  
 		lastName: payload.data.lastName,
 		timezone: payload.data.timezone,
+		createdAt: now,
+		updatedAt: now,
 	};
 
 	const events: UserEvent[] = payload.data.events.map((event) => {
 		const normalizedDate = dayjs(event.date).format('YYYY-MM-DD');
 		const notifyLocalTime = event.notifyLocalTime || DEFAULT_NOTIFY_LOCAL_TIME;
-		const notifyUtc = computeNotifyUtc(normalizedDate, payload.data.timezone, notifyLocalTime);
+		const notifyUtc = computeNotifyUtc(normalizedDate, payload.data.timezone, notifyLocalTime, now);
 
 		const newEvent: UserEvent = {
 			type: event.type,
 			date: normalizedDate,
 			notifyLocalTime,
 			notifyUtc,
+			createdAt: now,
+			updatedAt: now,
 			lastSentYear: 0
 		};
 

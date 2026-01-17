@@ -29,7 +29,7 @@ describe('flattenUserToDynamoDBItems', () => {
       // Check metadata item
       const metadataItem = result.find(item => item.SK === 'METADATA');
       expect(metadataItem).toBeDefined();
-      expect(metadataItem).toEqual({
+      expect(metadataItem).toMatchObject({
         PK: 'USER#user-123',
         SK: 'METADATA',
         data: {
@@ -39,11 +39,13 @@ describe('flattenUserToDynamoDBItems', () => {
           timezone: 'America/New_York',
         },
       });
+      expect((metadataItem as any)?.data?.createdAt).toBeDefined();
+      expect((metadataItem as any)?.data?.updatedAt).toBeDefined();
 
       // Check event item
       const eventItem = result.find(item => item.SK === 'EVENT#birthday');
       expect(eventItem).toBeDefined();
-      expect(eventItem).toEqual({
+      expect(eventItem).toMatchObject({
         PK: 'USER#user-123',
         SK: 'EVENT#birthday',
         GSI1PK: 'EVENT',
@@ -54,6 +56,8 @@ describe('flattenUserToDynamoDBItems', () => {
         lastSentYear: 2025,
         sendingStatus: 'pending',
       });
+      expect((eventItem as any)?.createdAt).toBeDefined();
+      expect((eventItem as any)?.updatedAt).toBeDefined();
     });
 
     it('should create items for user with multiple events', () => {
@@ -273,12 +277,14 @@ describe('flattenUserToDynamoDBItems', () => {
       const result = flattenUserToDynamoDBItems(user);
       const metadataItem = result.find(item => item.SK === 'METADATA') as any;
 
-      expect(metadataItem.data).toEqual({
+      expect(metadataItem.data).toMatchObject({
         id: 'user-123',
         firstName: 'John',
         lastName: 'Doe',
         timezone: 'America/New_York',
       });
+      expect(metadataItem.data.createdAt).toBeDefined();
+      expect(metadataItem.data.updatedAt).toBeDefined();
     });
 
     it('should not include events in metadata data', () => {
@@ -331,6 +337,8 @@ describe('flattenUserToDynamoDBItems', () => {
       expect(eventItem).toHaveProperty('date', '1990-06-15');
       expect(eventItem).toHaveProperty('notifyLocalTime', '09:00');
       expect(eventItem).toHaveProperty('notifyUtc', '2026-06-15T09:00:00.000Z');
+      expect(eventItem).toHaveProperty('createdAt');
+      expect(eventItem).toHaveProperty('updatedAt');
       expect(eventItem).toHaveProperty('lastSentYear', 2025);
       expect(eventItem).toHaveProperty('GSI1PK', 'EVENT');
     });

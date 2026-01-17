@@ -74,6 +74,7 @@ export const updateUser = async (event: APIGatewayProxyEvent) => {
                 const updates: string[] = [];
                 const expressionAttributeValues: Record<string, any> = {};
                 const expressionAttributeNames: Record<string, string> = {};
+                const now = new Date().toISOString();
 
                 if (updatesRequested.date !== undefined) {
                     const normalizedDate = dayjs(updatesRequested.date).format('YYYY-MM-DD');
@@ -98,10 +99,13 @@ export const updateUser = async (event: APIGatewayProxyEvent) => {
                 if (updatesRequested.date !== undefined || updatesRequested.notifyLocalTime !== undefined) {
                     const date = updatesRequested.date ?? existingEvent.date;
                     const notifyLocalTime = updatesRequested.notifyLocalTime ?? existingEvent.notifyLocalTime;
-                    const notifyUtc = computeNotifyUtc(date, user.timezone, notifyLocalTime);
+                    const notifyUtc = computeNotifyUtc(date, user.timezone, notifyLocalTime, now);
                     updates.push('notifyUtc = :notifyUtc');
                     expressionAttributeValues[':notifyUtc'] = notifyUtc;
                 }
+
+                updates.push('updatedAt = :updatedAt');
+                expressionAttributeValues[':updatedAt'] = now;
 
                 const result = await dynamoClient.send(new UpdateCommand({
                     TableName: USERS_TABLE,
@@ -199,6 +203,12 @@ export const updateUser = async (event: APIGatewayProxyEvent) => {
         if (updates.length === 0) {
             return { statusCode: 400, body: JSON.stringify({ error: 'No supported fields to update' }) };
         }
+
+        const now = new Date().toISOString();
+        updates.push('#data.#updatedAt = :updatedAt');
+        expressionAttributeNames['#data'] = 'data';
+        expressionAttributeNames['#updatedAt'] = 'updatedAt';
+        expressionAttributeValues[':updatedAt'] = now;
 
         const result = await dynamoClient.send(new UpdateCommand({
             TableName: USERS_TABLE,

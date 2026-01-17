@@ -57,7 +57,7 @@ export const sender = async (event: any) => {
             await dynamoClient.send(new UpdateCommand({
               TableName: USERS_TABLE,
               Key: { PK: pk, SK: sk },
-              UpdateExpression: "SET sendingStatus = :failed, markedFailedAt = :now, failureReason = :reason",
+              UpdateExpression: "SET sendingStatus = :failed, markedFailedAt = :now, failureReason = :reason, updatedAt = :now",
               ExpressionAttributeValues: {
                 ":failed": "failed",
                 ":now": new Date().toISOString(),
@@ -89,7 +89,7 @@ export const sender = async (event: any) => {
           await dynamoClient.send(new UpdateCommand({
             TableName: USERS_TABLE,
             Key: { PK: pk, SK: sk },
-            UpdateExpression: "SET sendingStatus = :sending, sendingAttemptedAt = :now, lastSentYear = :year, notifyUtc = :notifyUtc",
+            UpdateExpression: "SET sendingStatus = :sending, sendingAttemptedAt = :now, lastSentYear = :year, notifyUtc = :notifyUtc, updatedAt = :now",
             ConditionExpression: "lastSentYear = :currentLastSentYear AND (attribute_not_exists(sendingStatus) OR sendingStatus IN (:pending, :failed))",
             ExpressionAttributeValues: {
               ":sending": "sending",
@@ -134,9 +134,10 @@ export const sender = async (event: any) => {
             await dynamoClient.send(new UpdateCommand({
               TableName: USERS_TABLE,
               Key: { PK: pk, SK: sk },
-              UpdateExpression: "SET sendingStatus = :failed",
+              UpdateExpression: "SET sendingStatus = :failed, updatedAt = :now",
               ExpressionAttributeValues: {
-                ":failed": "failed"
+                ":failed": "failed",
+                ":now": new Date().toISOString(),
               }
             }));
           } catch (failError) {
@@ -153,7 +154,7 @@ export const sender = async (event: any) => {
           const result = await dynamoClient.send(new UpdateCommand({
             TableName: USERS_TABLE,
             Key: { PK: pk, SK: sk },
-            UpdateExpression: "SET sendingStatus = :completed, sendingCompletedAt = :now, webhookResponseCode = :code, webhookDeliveredAt = :deliveredAt",
+            UpdateExpression: "SET sendingStatus = :completed, sendingCompletedAt = :now, webhookResponseCode = :code, webhookDeliveredAt = :deliveredAt, updatedAt = :now",
             ExpressionAttributeValues: {
               ":completed": "completed",
               ":now": new Date().toISOString(),

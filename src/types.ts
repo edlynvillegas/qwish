@@ -17,6 +17,10 @@ export interface UserEvent {
     notifyLocalTime: string;
     /** UTC timestamp for next notification */
     notifyUtc: string;
+    /** Timestamp when event was created (ISO 8601) */
+    createdAt: string;
+    /** Timestamp when event was last updated (ISO 8601) */
+    updatedAt: string;
     /** Last year this event was sent (prevents duplicates) */
     lastSentYear: number;
     /** Optional label/name for the event (e.g., "Wedding Anniversary", "Work Anniversary") */
@@ -42,6 +46,8 @@ export interface User {
     firstName: string;
     lastName: string;
     timezone: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export type DynamoDBUserItem =
@@ -69,4 +75,6 @@ export type DynamoDBUserItem =
       failureReason?: string;
       webhookResponseCode?: number;
       webhookDeliveredAt?: string;
+      createdAt: string;
+      updatedAt: string;
     };

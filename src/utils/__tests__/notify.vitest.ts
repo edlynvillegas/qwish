@@ -89,6 +89,17 @@ describe('computeNotifyUtc', () => {
       // Should be this year since 12pm UTC hasn't passed yet
       expect(result).toBe('2026-01-14T12:00:00.000Z');
     });
+
+    it('should skip current year when reference time is after this year event', () => {
+      const birthday = '1990-01-01'; // January 1
+      const tz = 'UTC';
+      const notifyLocalTime = '09:00';
+      const referenceTimeIso = '2026-02-01T00:00:00.000Z'; // After Jan 1, 2026
+
+      const result = computeNotifyUtc(birthday, tz, notifyLocalTime, referenceTimeIso);
+
+      expect(result).toBe('2027-01-01T09:00:00.000Z');
+    });
   });
 
   describe('Different notification times', () => {

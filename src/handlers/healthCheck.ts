@@ -109,7 +109,7 @@ export const healthCheck = async (): Promise<{ statusCode: number; body: string 
           await dynamoClient.send(new UpdateCommand({
             TableName: USERS_TABLE,
             Key: { PK: event.PK, SK: event.SK },
-            UpdateExpression: "SET sendingStatus = :failed, markedFailedAt = :now, failureReason = :reason",
+            UpdateExpression: "SET sendingStatus = :failed, markedFailedAt = :now, failureReason = :reason, updatedAt = :now",
             ExpressionAttributeValues: {
               ":failed": "failed",
               ":now": nowIso,

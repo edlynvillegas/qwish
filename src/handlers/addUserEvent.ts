@@ -48,13 +48,16 @@ export const addUserEvent = async (event: APIGatewayProxyEvent) => {
     }
 
     const normalizedDate = dayjs(incomingEvent.date).format('YYYY-MM-DD');
-    const notifyUtc = computeNotifyUtc(normalizedDate, user.timezone, incomingEvent.notifyLocalTime);
+    const now = new Date().toISOString();
+    const notifyUtc = computeNotifyUtc(normalizedDate, user.timezone, incomingEvent.notifyLocalTime, now);
 
     const eventItem: UserEvent = {
       type: incomingEvent.type,
       date: normalizedDate,
       notifyLocalTime: incomingEvent.notifyLocalTime,
       notifyUtc,
+      createdAt: now,
+      updatedAt: now,
       lastSentYear: 0,
     };
 

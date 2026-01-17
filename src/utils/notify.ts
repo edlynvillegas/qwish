@@ -7,10 +7,17 @@ import dayjs from "../lib/dayjs";
  * @param birthday - Birthday in YYYY-MM-DD format
  * @param tz - IANA timezone (e.g., 'America/New_York')
  * @param notifyLocalTime - Local time in HH:mm format (e.g., '09:00')
+ * @param referenceTimeIso - Optional ISO timestamp to use as "now" (e.g., createdAt)
  * @returns ISO 8601 UTC timestamp
  */
-export function computeNotifyUtc(birthday: string, tz: string, notifyLocalTime: string): string {
-    const now = dayjs();
+export function computeNotifyUtc(
+  birthday: string,
+  tz: string,
+  notifyLocalTime: string,
+  referenceTimeIso?: string
+): string {
+    const referenceTime = referenceTimeIso ? dayjs(referenceTimeIso) : dayjs();
+    const now = referenceTime.isValid() ? referenceTime : dayjs();
     let year = now.year();
 
     // Birthday this year
